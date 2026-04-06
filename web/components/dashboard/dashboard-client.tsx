@@ -23,6 +23,7 @@ export function DashboardClient() {
   const [isNodeModalOpen, setIsNodeModalOpen] = useState(false);
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   const [terminalInstanceId, setTerminalInstanceId] = useState<string | null>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<ShopPlan | null>(null);
 
   const query = store.searchQuery.trim().toLowerCase();
 
@@ -54,6 +55,11 @@ export function DashboardClient() {
   const activeNode = filteredNodes.find((n) => n.id === store.selectedNodeId) ?? filteredNodes[0] ?? { id: "", name: "Loading Node...", provider: "...", regionId: "...", ip: "...", os: "...", status: "offline", instanceCount: 0, hardwareId: "", tags: [], createdAt: "" };
   const activeInstance = filteredInstances.find((i) => i.id === store.selectedInstanceId) ?? filteredInstances[0] ?? { id: "", name: "Loading Instance...", ip: "...", status: "unknown" };
   const activePlan = filteredPlans.find((p) => p.id === store.selectedPlanId) ?? filteredPlans[0] ?? { id: "", name: "Loading Plan...", priceMonthly: 0, cpuCores: 0, ramGb: 0, storageGb: 0, bandwidthTb: 0, highlights: [] };
+
+  const terminalInstance = useMemo(
+    () => servers.find((i) => i.id === terminalInstanceId),
+    [servers, terminalInstanceId]
+  );
 
   const summary = useMemo(() => {
     if (store.activeDomain === "admin") {
@@ -99,7 +105,7 @@ export function DashboardClient() {
       store.pushToast({ tone: "info", title: "Coming soon", message: "Stripe integration pending." });
       return;
     }
-    handlePurchasePlan(activePlan);
+    handlePurchasePlan(activePlan as ShopPlan);
   };
 
   const handleInstanceSubmit = async (instance: Instance) => {
@@ -109,7 +115,7 @@ export function DashboardClient() {
       await apiClient.post('/servers', {
         name: instance.name,
         region: instance.regionId,
-        plan: instance.planId,
+        planId: instance.id, // Fixed: use instance.id which is planId in modal logic
         image: instance.os,
       });
       store.pushToast({ tone: "success", title: "Success", message: "Server order submitted to Go Backend!" });
@@ -126,15 +132,29 @@ export function DashboardClient() {
   };
 
   const handlePurchasePlan = (plan: ShopPlan) => {
-    if (!plan) return;
-    store.selectPlan(plan.id);
-    store.pushToast({ tone: "success", title: "Checkout preview", message: `Ready to pay $${plan.priceMonthly} for ${plan.name}` });
+    if (!plan?.id) return;
+    setCheckoutPlan(plan);
+  };
+
+  const handleCheckoutSubmit = async (payload: any) => {
+    setCheckoutPlan(null);
+    store.pushToast({ tone: "success", title: "Checkout Successful", message: `Order for ${payload.billingEmail} processed.` });
   };
 
   const handleThemeToggle = () => {
     const nextTheme = store.storefrontTheme === "midnight" ? "paper" : "midnight";
     store.setStorefrontTheme(nextTheme);
   };
+
+  const dummyRegion: Region = {
+    id: 'us-east',
+    name: 'US East',
+    code: 'US-E',
+    country: 'United States',
+    datacenter: 'NJ-1',
+    timezone: 'UTC-5',
+    accent: 'blue'
+  }
 
   return (
     <>
@@ -160,10 +180,13 @@ export function DashboardClient() {
       >
         {store.activeDomain === "admin" && (
           <AdminDomainPanel
-            state={{ nodes, alerts: store.alerts, license: store.license } as any}
-            section={store.activeSection.admin as any}
-            selectedNode={activeNode}
-            selectedRegion={{ id: 'us-east', name: 'US East' } as any}
+            nodes={nodes}
+            instances={servers}
+            alerts={store.alerts}
+            license={store.license}
+            section={store.activeSection.admin}
+            selectedNode={activeNode as Node}
+            selectedRegion={dummyRegion}
             liveTick={1}
             scenario={"balanced"}
             liveFeed={[]}
@@ -177,10 +200,12 @@ export function DashboardClient() {
 
         {store.activeDomain === "panel" && (
           <PanelDomainPanel
-            state={{ instances: servers, nodes } as any}
-            section={store.activeSection.panel as any}
-            selectedInstance={activeInstance}
-            selectedRegion={{ id: 'us-east', name: 'US East' } as any}
+            instances={servers}
+            nodes={nodes}
+            regions={[dummyRegion]}
+            section={store.activeSection.panel}
+            selectedInstance={activeInstance as Instance}
+            selectedRegion={dummyRegion}
             selectedNode={nodes.find((n) => n.id === activeInstance?.nodeId)}
             liveTick={1}
             scenario={"balanced"}
@@ -195,9 +220,11 @@ export function DashboardClient() {
 
         {store.activeDomain === "dash" && (
           <DashDomainPanel
-            state={{ account: store.account, invoices: store.invoices, instances: servers } as any}
-            section={store.activeSection.dash as any}
-            selectedInstance={activeInstance}
+            invoices={store.invoices}
+            instances={servers}
+            account={store.account}
+            section={store.activeSection.dash}
+            selectedInstance={activeInstance as Instance}
             liveTick={1}
             scenario={"balanced"}
             onSectionChange={(section) => store.setSection("dash", section)}
@@ -210,9 +237,10 @@ export function DashboardClient() {
 
         {store.activeDomain === "shop" && (
           <ShopDomainPanel
-            state={{ plans, storefrontTheme: store.storefrontTheme } as any}
-            section={store.activeSection.shop as any}
-            selectedPlan={activePlan}
+            plans={plans}
+            storefrontTheme={store.storefrontTheme}
+            section={store.activeSection.shop}
+            selectedPlan={activePlan as ShopPlan}
             liveTick={1}
             scenario={"balanced"}
             onSectionChange={(section) => store.setSection("shop", section)}
@@ -231,20 +259,37 @@ export function DashboardClient() {
 
       {isNodeModalOpen && (
         <NodeProvisionModal
-          regions={[{id: "us-east", name:"US East"}] as any}
+          regions={[dummyRegion]}
           selectedRegionId={"us-east"}
           onClose={() => setIsNodeModalOpen(false)}
-          onSubmit={handleNodeSubmit as any}
+          onSubmit={handleNodeSubmit}
         />
       )}
 
       {isDeployModalOpen && (
         <InstanceDeployModal
-          regions={[{id: "us-east", name:"US East"}] as any}
+          regions={[dummyRegion]}
           nodes={nodes}
           plans={plans}
           onClose={() => setIsDeployModalOpen(false)}
-          onSubmit={handleInstanceSubmit as any}
+          onSubmit={handleInstanceSubmit}
+        />
+      )}
+
+      {terminalInstance && (
+        <TerminalModal
+          instance={terminalInstance}
+          onClose={() => setTerminalInstanceId(null)}
+          onPowerAction={() => {}}
+        />
+      )}
+
+      {checkoutPlan && (
+        <CheckoutModal
+          plan={checkoutPlan}
+          account={store.account}
+          onClose={() => setCheckoutPlan(null)}
+          onSubmit={handleCheckoutSubmit}
         />
       )}
     </>

@@ -231,7 +231,7 @@ export function NodeDetails({ nodeId, onToast }: NodeDetailsProps) {
         {['overview', 'instances', 'logs'].map((tab) => (
           <button
             key={tab}
-            onClick={() => setExpandedTab(tab as any)}
+            onClick={() => setExpandedTab(tab as typeof expandedTab)}
             className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all flex items-center justify-between ${
               expandedTab === tab ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-slate-800/30 text-slate-300 hover:bg-slate-800/50'
             }`}

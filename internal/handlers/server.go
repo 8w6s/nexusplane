@@ -13,9 +13,9 @@ import (
 // GetServers trả về danh sách máy chủ của user
 func GetServers(c *fiber.Ctx) error {
 	var servers []models.Server
+	userID := c.Locals("userId").(string)
 
-	// Tạm thời hardcode cho user_demo_123
-	result := config.DB.Where("user_id = ?", "user_demo_123").Find(&servers)
+	result := config.DB.Where("user_id = ?", userID).Find(&servers)
 	
 	if result.Error != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -30,6 +30,7 @@ func GetServers(c *fiber.Ctx) error {
 
 // CreateServer xử lý request tạo VPS/Server mới
 func CreateServer(c *fiber.Ctx) error {
+	userID := c.Locals("userId").(string)
 	req := new(models.CreateServerRequest)
 
 	if err := c.BodyParser(req); err != nil {
@@ -46,7 +47,7 @@ func CreateServer(c *fiber.Ctx) error {
 
 	server := models.Server{
 		ID:        uuid.New().String(),
-		UserID:    "user_demo_123",
+		UserID:    userID,
 		Name:      req.Name,
 		Region:    req.Region,
 		Plan:      req.Plan,

@@ -54,7 +54,10 @@ import {
 type PanelSection = DomainSectionMap['panel']
 
 interface PanelDomainPanelProps {
-  state: DemoState
+  instances: Instance[]
+  nodes: Node[]
+  regions: Region[]
+  searchQuery: string
   section: PanelSection
   selectedInstance: Instance
   selectedRegion: Region
@@ -77,7 +80,10 @@ const sections: { id: PanelSection; label: string; icon: typeof MonitorCog }[] =
 ]
 
 export function PanelDomainPanel({
-  state,
+  instances,
+  nodes,
+  regions,
+  searchQuery,
   section,
   selectedInstance,
   selectedRegion,
@@ -91,7 +97,7 @@ export function PanelDomainPanel({
   onOpenDeployModal,
   onOpenTerminal,
 }: PanelDomainPanelProps) {
-  const all = state.instances
+  const all = instances
   const running = all.filter((i) => i.status === 'running').length
   const stopped = all.filter((i) => i.status === 'stopped').length
 
@@ -121,7 +127,10 @@ export function PanelDomainPanel({
 
       {section === 'instances' && (
         <InstancesSection
-          state={state}
+          instances={instances}
+          nodes={nodes}
+          regions={regions}
+          searchQuery={searchQuery}
           selectedInstance={selectedInstance}
           selectedRegion={selectedRegion}
           selectedNode={selectedNode}
@@ -149,7 +158,10 @@ export function PanelDomainPanel({
 // ─── Instances ────────────────────────────────────────────────────────────────
 
 function InstancesSection({
-  state,
+  instances,
+  nodes,
+  regions,
+  searchQuery,
   selectedInstance,
   selectedRegion,
   selectedNode,
@@ -160,7 +172,10 @@ function InstancesSection({
   onOpenDeployModal,
   onOpenTerminal,
 }: {
-  state: DemoState
+  instances: Instance[]
+  nodes: Node[]
+  regions: Region[]
+  searchQuery: string
   selectedInstance: Instance
   selectedRegion: Region
   selectedNode: Node | undefined
@@ -171,8 +186,8 @@ function InstancesSection({
   onOpenDeployModal: () => void
   onOpenTerminal: (i: Instance) => void
 }) {
-  const filtered = state.instances.filter((i) => {
-    const q = state.searchQuery.trim().toLowerCase()
+  const filtered = instances.filter((i) => {
+    const q = searchQuery.trim().toLowerCase()
     if (!q) return true
     return [i.name, i.ip, i.os, i.ownerName, i.status, i.kind].some((f) =>
       f.toLowerCase().includes(q),
@@ -206,8 +221,8 @@ function InstancesSection({
             <InstanceCard
               key={instance.id}
               instance={instance}
-              node={state.nodes.find((n) => n.id === instance.nodeId)}
-              region={state.regions.find((r) => r.id === instance.regionId)}
+              node={nodes.find((n) => n.id === instance.nodeId)}
+              region={regions.find((r) => r.id === instance.regionId)}
               selected={selectedInstance.id === instance.id}
               liveTick={liveTick}
               scenario={scenario}

@@ -44,7 +44,9 @@ import {
 type DashSection = DomainSectionMap['dash']
 
 interface DashDomainPanelProps {
-  state: DemoState
+  invoices: Invoice[]
+  instances: Instance[]
+  account: CustomerAccount
   section: DashSection
   selectedInstance: Instance
   liveTick: number
@@ -63,7 +65,9 @@ const sections: { id: DashSection; label: string; icon: typeof Wallet }[] = [
 ]
 
 export function DashDomainPanel({
-  state,
+  invoices,
+  instances,
+  account,
   section,
   selectedInstance,
   liveTick,
@@ -74,8 +78,8 @@ export function DashDomainPanel({
   onPayInvoice,
   onTopUpBalance,
 }: DashDomainPanelProps) {
-  const openInvoices = state.invoices.filter((i) => i.status !== 'paid').length
-  const customerInstances = state.instances.filter(
+  const openInvoices = invoices.filter((i) => i.status !== 'paid').length
+  const customerInstances = instances.filter(
     (i) => i.ownerName.includes('tenant') || i.name.startsWith('dash-') || i.name.startsWith('customer'),
   )
 
@@ -86,7 +90,7 @@ export function DashDomainPanel({
         title="Client Portal"
         description="Khách hàng chỉ thấy VPS của họ, billing cá nhân và nút thao tác thật nhanh."
         stats={[
-          { label: 'Balance', value: `$${state.account.balance.toFixed(2)}` },
+          { label: 'Balance', value: `$${account.balance.toFixed(2)}` },
           { label: 'Open invoices', value: String(openInvoices) },
           { label: 'Active VPS', value: String(customerInstances.filter((i) => i.status === 'running').length) },
         ]}
@@ -104,7 +108,7 @@ export function DashDomainPanel({
               className="bg-blue-500 text-white hover:bg-blue-400 shadow-lg shadow-blue-500/20"
               onClick={() =>
                 onPayInvoice(
-                  state.invoices.find((i) => i.status !== 'paid')?.id ?? state.invoices[0].id,
+                  invoices.find((i) => i.status !== 'paid')?.id ?? invoices[0].id,
                 )
               }
             >
@@ -119,7 +123,8 @@ export function DashDomainPanel({
 
       {section === 'dashboard' && (
         <DashOverview
-          state={state}
+          account={account}
+          invoices={invoices}
           customerInstances={customerInstances}
           selectedInstance={selectedInstance}
           liveTick={liveTick}
@@ -131,7 +136,9 @@ export function DashDomainPanel({
       )}
       {section === 'billing' && (
         <DashBilling
-          state={state}
+          account={account}
+          invoices={invoices}
+          instances={instances}
           liveTick={liveTick}
           onPayInvoice={onPayInvoice}
           onTopUpBalance={onTopUpBalance}
@@ -139,7 +146,7 @@ export function DashDomainPanel({
       )}
       {section === 'settings' && (
         <DashSettings
-          state={state}
+          account={account}
           liveTick={liveTick}
           scenario={scenario}
           selectedInstance={selectedInstance}
@@ -154,7 +161,8 @@ export function DashDomainPanel({
 // ─── Dashboard Overview ───────────────────────────────────────────────────────
 
 function DashOverview({
-  state,
+  account,
+  invoices,
   customerInstances,
   selectedInstance,
   liveTick,
@@ -163,7 +171,8 @@ function DashOverview({
   onOpenTerminal,
   onPayInvoice,
 }: {
-  state: DemoState
+  account: CustomerAccount
+  invoices: Invoice[]
   customerInstances: Instance[]
   selectedInstance: Instance
   liveTick: number
@@ -178,14 +187,14 @@ function DashOverview({
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Wallet balance"
-          value={`$${state.account.balance.toFixed(2)}`}
-          hint={state.account.savedPaymentMethod}
+          value={`$${account.balance.toFixed(2)}`}
+          hint={account.savedPaymentMethod}
           tone="blue"
         />
         <MetricCard
           label="Next renewal"
-          value={state.account.nextRenewal}
-          hint={state.account.email}
+          value={account.nextRenewal}
+          hint={account.email}
           tone="purple"
         />
         <MetricCard
@@ -196,7 +205,7 @@ function DashOverview({
         />
         <MetricCard
           label="Open invoices"
-          value={String(state.invoices.filter((i) => i.status !== 'paid').length)}
+          value={String(invoices.filter((i) => i.status !== 'paid').length)}
           hint="Awaiting payment"
           tone="pink"
         />
@@ -250,7 +259,7 @@ function DashOverview({
               </div>
               <InfoTile label="IP Address" value={selectedInstance.ip} mono />
               <InfoTile label="OS" value={selectedInstance.os} />
-              <InfoTile label="Renewal" value={state.account.nextRenewal} />
+              <InfoTile label="Renewal" value={account.nextRenewal} />
 
               <ProgressLine
                 label="CPU burst"
@@ -274,13 +283,13 @@ function DashOverview({
           </GlassCard>
 
           {/* Pending invoice */}
-          {state.invoices.filter((i) => i.status !== 'paid').length > 0 && (
+          {invoices.filter((i) => i.status !== 'paid').length > 0 && (
             <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-amber-200">
                 <ReceiptText className="size-4" />
                 Invoice chờ thanh toán
               </div>
-              {state.invoices
+              {invoices
                 .filter((i) => i.status !== 'paid')
                 .slice(0, 2)
                 .map((inv) => (
@@ -382,17 +391,21 @@ function CustomerInstanceRow({
 // ─── Billing ──────────────────────────────────────────────────────────────────
 
 function DashBilling({
-  state,
+  account,
+  invoices,
+  instances,
   liveTick,
   onPayInvoice,
   onTopUpBalance,
 }: {
-  state: DemoState
+  account: any
+  invoices: any[]
+  instances: Instance[]
   liveTick: number
   onPayInvoice: (id: string) => void
   onTopUpBalance: (amount: number) => void
 }) {
-  const totalSpend = state.invoices
+  const totalSpend = invoices
     .filter((i) => i.status === 'paid')
     .reduce((s, i) => s + i.amount, 0)
 
@@ -404,8 +417,8 @@ function DashBilling({
       <div className="grid gap-4 sm:grid-cols-3">
         <MetricCard
           label="Current balance"
-          value={`$${state.account.balance.toFixed(2)}`}
-          hint={state.account.savedPaymentMethod}
+          value={`$${account.balance.toFixed(2)}`}
+          hint={account.savedPaymentMethod}
           tone="blue"
         />
         <MetricCard
@@ -416,7 +429,7 @@ function DashBilling({
         />
         <MetricCard
           label="Next renewal"
-          value={state.account.nextRenewal}
+          value={account.nextRenewal}
           hint="Auto-charge scheduled"
           tone="purple"
         />
@@ -431,12 +444,12 @@ function DashBilling({
               <div className="rounded-3xl border border-white/5 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.15),transparent_60%)] p-5">
                 <p className="text-xs uppercase tracking-wider text-slate-500">Available balance</p>
                 <p className="mt-3 text-4xl font-bold tabular-nums text-white">
-                  ${state.account.balance.toFixed(2)}
+                  ${account.balance.toFixed(2)}
                 </p>
-                <p className="mt-2 text-sm text-slate-400">{state.account.email}</p>
+                <p className="mt-2 text-sm text-slate-400">{account.email}</p>
                 <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
                   <CreditCard className="size-3.5" />
-                  {state.account.savedPaymentMethod}
+                  {account.savedPaymentMethod}
                 </div>
               </div>
 
@@ -468,9 +481,9 @@ function DashBilling({
           <GlassCard title="This month" description="">
             <div className="space-y-3">
               {[
-                { label: 'Compute', value: state.instances.reduce((s, i) => s + i.priceMonthly * 0.7, 0).toFixed(2) },
-                { label: 'Storage', value: state.instances.reduce((s, i) => s + i.priceMonthly * 0.2, 0).toFixed(2) },
-                { label: 'Bandwidth', value: state.instances.reduce((s, i) => s + i.priceMonthly * 0.1, 0).toFixed(2) },
+                { label: 'Compute', value: instances.reduce((s, i) => s + i.priceMonthly * 0.7, 0).toFixed(2) },
+                { label: 'Storage', value: instances.reduce((s, i) => s + i.priceMonthly * 0.2, 0).toFixed(2) },
+                { label: 'Bandwidth', value: instances.reduce((s, i) => s + i.priceMonthly * 0.1, 0).toFixed(2) },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">{item.label}</span>
@@ -480,7 +493,7 @@ function DashBilling({
               <div className="border-t border-white/5 pt-3 flex items-center justify-between text-sm font-semibold">
                 <span className="text-white">Total</span>
                 <span className="font-mono text-white">
-                  ${state.instances.reduce((s, i) => s + i.priceMonthly, 0).toFixed(2)}
+                  ${instances.reduce((s, i) => s + i.priceMonthly, 0).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -490,7 +503,7 @@ function DashBilling({
         {/* Invoice list */}
         <GlassCard title="Invoices" description="Lịch sử thanh toán và hóa đơn chờ.">
           <div className="space-y-3">
-            {state.invoices.map((invoice) => (
+            {invoices.map((invoice) => (
               <div
                 key={invoice.id}
                 className="rounded-2xl border border-white/5 bg-white/[0.03] p-4"
@@ -555,14 +568,14 @@ function DashBilling({
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 function DashSettings({
-  state,
+  account,
   liveTick,
   scenario,
   selectedInstance,
   onTopUpBalance,
   onOpenTerminal,
 }: {
-  state: DemoState
+  account: any
   liveTick: number
   scenario: SimulationScenario
   selectedInstance: Instance
@@ -582,18 +595,18 @@ function DashSettings({
             {/* Avatar area */}
             <div className="flex items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.03] p-4">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 text-lg font-bold text-white">
-                {state.account.name.slice(0, 1).toUpperCase()}
+                {account.name.slice(0, 1).toUpperCase()}
               </div>
               <div>
-                <p className="font-semibold text-white">{state.account.name}</p>
-                <p className="text-sm text-slate-400">{state.account.email}</p>
+                <p className="font-semibold text-white">{account.name}</p>
+                <p className="text-sm text-slate-400">{account.email}</p>
               </div>
             </div>
 
-            <InfoTile label="Email" value={state.account.email} />
-            <InfoTile label="Payment method" value={state.account.savedPaymentMethod} />
+            <InfoTile label="Email" value={account.email} />
+            <InfoTile label="Payment method" value={account.savedPaymentMethod} />
             <InfoTile label="Account type" value="Client Portal" />
-            <InfoTile label="Next billing" value={state.account.nextRenewal} />
+            <InfoTile label="Next billing" value={account.nextRenewal} />
           </div>
         </GlassCard>
 

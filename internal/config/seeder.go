@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/8w6s/nexusplane/internal/models"
+	"github.com/8w6s/nexusplane/internal/services"
 )
 
 // SeedDatabase bơm dữ liệu mẫu tối thiểu cho các model Catalog và Node
@@ -11,6 +12,21 @@ import (
 func SeedDatabase() {
 	var count int64
 	
+	// Seed Users
+	DB.Model(&models.User{}).Count(&count)
+	if count == 0 {
+		hashedPw, _ := services.HashPassword("admin123")
+		admin := models.User{
+			ID:           "admin_nexus_01",
+			Email:        "admin@nexusplane.io",
+			PasswordHash: hashedPw,
+			Name:         "Platform Admin",
+			Role:         "admin",
+		}
+		DB.Create(&admin)
+		log.Println("Seeder: Đã tạo User Admin mặc định (admin@nexusplane.io / admin123)")
+	}
+
 	// Seed Plans
 	DB.Model(&models.ShopPlan{}).Count(&count)
 	if count == 0 {

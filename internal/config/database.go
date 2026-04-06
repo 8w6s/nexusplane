@@ -32,6 +32,7 @@ func ConnectDB() {
 		&models.Server{},
 		&models.Node{},
 		&models.ShopPlan{},
+		&models.User{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database. \n", err)

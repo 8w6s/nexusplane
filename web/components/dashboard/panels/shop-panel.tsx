@@ -49,7 +49,8 @@ import {
 type ShopSection = DomainSectionMap['shop']
 
 interface ShopDomainPanelProps {
-  state: DemoState
+  plans: ShopPlan[]
+  storefrontTheme: 'midnight' | 'paper'
   section: ShopSection
   selectedPlan: ShopPlan
   liveTick: number
@@ -68,7 +69,8 @@ const sections: { id: ShopSection; label: string; icon: typeof ShoppingCart }[] 
 ]
 
 export function ShopDomainPanel({
-  state,
+  plans,
+  storefrontTheme,
   section,
   selectedPlan,
   liveTick,
@@ -91,9 +93,9 @@ export function ShopDomainPanel({
         title="NexusPlane Storefront"
         description="Bán gói hosting, game server và API headless với cảm giác sạch, đắt tiền và conversion cao."
         stats={[
-          { label: 'Plans available', value: String(state.plans.length) },
+          { label: 'Plans available', value: String(plans.length) },
           { label: 'Conversion rate', value: conversion },
-          { label: 'Theme', value: state.storefrontTheme },
+          { label: 'Theme', value: storefrontTheme },
         ]}
         actions={
           <Button
@@ -102,7 +104,7 @@ export function ShopDomainPanel({
             onClick={onToggleTheme}
           >
             <Sparkles className="size-4" />
-            {state.storefrontTheme === 'midnight' ? 'Switch to Paper' : 'Switch to Midnight'}
+            {storefrontTheme === 'midnight' ? 'Switch to Paper' : 'Switch to Midnight'}
           </Button>
         }
       />
@@ -111,7 +113,8 @@ export function ShopDomainPanel({
 
       {section === 'catalog' && (
         <CatalogSection
-          state={state}
+          plans={plans}
+          storefrontTheme={storefrontTheme}
           selectedPlan={selectedPlan}
           liveTick={liveTick}
           scenario={scenario}
@@ -130,7 +133,7 @@ export function ShopDomainPanel({
       )}
       {section === 'brand' && (
         <BrandSection
-          state={state}
+          storefrontTheme={storefrontTheme}
           selectedPlan={selectedPlan}
           liveTick={liveTick}
           scenario={scenario}
@@ -145,14 +148,16 @@ export function ShopDomainPanel({
 // ─── Catalog ───────────────────────────────────────────────────────────────────
 
 function CatalogSection({
-  state,
+  plans,
+  storefrontTheme,
   selectedPlan,
   liveTick,
   scenario,
   onSelectPlan,
   onPurchasePlan,
 }: {
-  state: DemoState
+  plans: ShopPlan[]
+  storefrontTheme: StorefrontTheme
   selectedPlan: ShopPlan
   liveTick: number
   scenario: SimulationScenario
@@ -172,19 +177,19 @@ function CatalogSection({
         <MetricCard label="Conversion" value={`${conversion}%`} hint="Purchase rate" tone="emerald" delta="+0.4%" />
         <MetricCard
           label="Plans live"
-          value={String(state.plans.length)}
+          value={String(plans.length)}
           hint="Published tiers"
           tone="blue"
         />
         <MetricCard
           label="Avg ticket"
-          value={`$${(state.plans.reduce((s, p) => s + p.priceMonthly, 0) / state.plans.length).toFixed(0)}`}
+          value={`$${(plans.reduce((s, p) => s + p.priceMonthly, 0) / Math.max(plans.length, 1)).toFixed(0)}`}
           hint="Per monthly plan"
           tone="purple"
         />
         <MetricCard
           label="Theme"
-          value={state.storefrontTheme === 'midnight' ? '🌙 Midnight' : '📄 Paper'}
+          value={storefrontTheme === 'midnight' ? '🌙 Midnight' : '📄 Paper'}
           hint="Active storefront skin"
           tone="pink"
         />
@@ -217,7 +222,7 @@ function CatalogSection({
 
       {/* Plans grid */}
       <div className="grid gap-4 xl:grid-cols-4">
-        {state.plans.map((plan) => (
+        {plans.map((plan) => (
           <PlanCard
             key={plan.id}
             plan={plan}
@@ -646,14 +651,14 @@ function ApiSection({
 // ─── Brand ────────────────────────────────────────────────────────────────────
 
 function BrandSection({
-  state,
+  storefrontTheme,
   selectedPlan,
   liveTick,
   scenario,
   onPurchasePlan,
   onToggleTheme,
 }: {
-  state: DemoState
+  storefrontTheme: StorefrontTheme
   selectedPlan: ShopPlan
   liveTick: number
   scenario: SimulationScenario
@@ -711,7 +716,7 @@ function BrandSection({
               <div>
                 <p className="text-sm font-medium text-white">Active theme</p>
                 <p className="text-xs text-slate-500">
-                  {state.storefrontTheme === 'midnight' ? 'Dark — mission control' : 'Light — clean editorial'}
+                  {storefrontTheme === 'midnight' ? 'Dark — mission control' : 'Light — clean editorial'}
                 </p>
               </div>
               <Button

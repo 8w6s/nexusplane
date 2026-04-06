@@ -4,7 +4,7 @@ import { Node, Instance, ShopPlan } from '@/types';
 
 export function useNodes() {
   const { data, error, mutate } = useSWR<{ nodes: Node[] }>('/admin/nodes', fetcher, {
-    refreshInterval: 5000, 
+    refreshInterval: 60000, // 1 minute for nodes
   });
   return {
     nodes: data?.nodes || [],
@@ -16,7 +16,7 @@ export function useNodes() {
 
 export function useServers() {
   const { data, error, mutate } = useSWR<{ servers: Instance[] }>('/servers', fetcher, {
-    refreshInterval: 5000,
+    refreshInterval: 15000, // 15 seconds for servers
   });
   return {
     servers: data?.servers || [],
@@ -27,7 +27,10 @@ export function useServers() {
 }
 
 export function usePlans() {
-  const { data, error } = useSWR<{ plans: ShopPlan[] }>('/catalog/plans', fetcher);
+  const { data, error } = useSWR<{ plans: ShopPlan[] }>('/catalog/plans', fetcher, {
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
+  });
   return {
     plans: data?.plans || [],
     isLoading: !error && !data,

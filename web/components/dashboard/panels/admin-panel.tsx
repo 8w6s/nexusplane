@@ -40,7 +40,10 @@ import {
 type AdminSection = DomainSectionMap['admin']
 
 interface AdminDomainPanelProps {
-  state: DemoState
+  nodes: Node[]
+  instances: Instance[]
+  alerts: Alert[]
+  license: License
   section: AdminSection
   selectedNode: Node
   selectedRegion: Region
@@ -62,7 +65,10 @@ const sections: { id: AdminSection; label: string; icon: typeof Sparkles }[] = [
 ]
 
 export function AdminDomainPanel({
-  state,
+  nodes,
+  instances,
+  alerts,
+  license,
   section,
   selectedNode,
   selectedRegion,
@@ -75,9 +81,9 @@ export function AdminDomainPanel({
   onToggleLicense,
   onOpenNodeModal,
 }: AdminDomainPanelProps) {
-  const onlineNodes = state.nodes.filter((n) => n.status !== 'offline').length
-  const totalInstances = state.nodes.reduce((sum, n) => sum + n.instanceCount, 0)
-  const mrr = state.instances.reduce((sum, i) => sum + i.priceMonthly, 0)
+  const onlineNodes = nodes.filter((n) => n.status !== 'offline').length
+  const totalInstances = nodes.reduce((sum, n) => sum + n.instanceCount, 0)
+  const mrr = instances.reduce((sum, i) => sum + i.priceMonthly, 0)
   const fleetHealth = pulseValue(96.4, liveTick, scenario === 'traffic-spike' ? 4.8 : 1.6).toFixed(1)
 
   return (
@@ -87,7 +93,7 @@ export function AdminDomainPanel({
         title="Admin Control Plane"
         description="Quản lý license, fleet node, và chính sách nền tảng NexusPlane. Mọi thứ trong một màn hình."
         stats={[
-          { label: 'Nodes online', value: `${onlineNodes}/${state.nodes.length}` },
+          { label: 'Nodes online', value: `${onlineNodes}/${nodes.length}` },
           { label: 'Total instances', value: String(totalInstances) },
           { label: 'MRR (demo)', value: `$${mrr}/mo` },
         ]}
@@ -99,7 +105,7 @@ export function AdminDomainPanel({
               onClick={onToggleLicense}
             >
               <Shield className="size-4" />
-              {state.license.readOnly ? 'Restore License' : 'Expire License'}
+              {license.readOnly ? 'Restore License' : 'Expire License'}
             </Button>
             <Button className="bg-blue-500 text-white hover:bg-blue-400 shadow-lg shadow-blue-500/20" onClick={onOpenNodeModal}>
               <Sparkles className="size-4" />
@@ -113,7 +119,9 @@ export function AdminDomainPanel({
 
       {section === 'overview' && (
         <AdminOverview
-          state={state}
+          nodes={nodes}
+          alerts={alerts}
+          license={license}
           liveTick={liveTick}
           scenario={scenario}
           fleetHealth={fleetHealth}
@@ -123,7 +131,8 @@ export function AdminDomainPanel({
       )}
       {section === 'fleet' && (
         <AdminFleet
-          state={state}
+          nodes={nodes}
+          regions={[]} // TODO: Fetch regions
           selectedNode={selectedNode}
           selectedRegion={selectedRegion}
           liveTick={liveTick}
@@ -133,31 +142,35 @@ export function AdminDomainPanel({
           onOpenNodeModal={onOpenNodeModal}
         />
       )}
-      {section === 'license' && <AdminLicense state={state} onToggleLicense={onToggleLicense} />}
+      {section === 'license' && <AdminLicense alerts={alerts} license={license} onToggleLicense={onToggleLicense} />}
       {section === 'analytics' && (
-        <AdminAnalytics state={state} liveTick={liveTick} scenario={scenario} liveFeed={liveFeed} />
+        <AdminAnalytics nodes={nodes} instances={instances} alerts={alerts} liveTick={liveTick} scenario={scenario} liveFeed={liveFeed} />
       )}
     </div>
   )
 }
 
 function AdminOverview({
-  state,
+  nodes,
+  alerts,
+  license,
   liveTick,
   scenario,
   fleetHealth,
   liveFeed,
   onToggleLicense,
 }: {
-  state: DemoState
+  nodes: Node[]
+  alerts: Alert[]
+  license: License
   liveTick: number
   scenario: SimulationScenario
   fleetHealth: string
   liveFeed: LiveFeedItem[]
   onToggleLicense: () => void
 }) {
-  const degradedCount = state.nodes.filter((n) => n.status === 'degraded').length
-  const avgLoad = Math.round(state.nodes.reduce((s, n) => s + n.load, 0) / Math.max(state.nodes.length, 1))
+  const degradedCount = nodes.filter((n) => n.status === 'degraded').length
+  const avgLoad = Math.round(nodes.reduce((s, n) => s + n.load, 0) / Math.max(nodes.length, 1))
 
   return (
     <div className="space-y-6">
@@ -178,9 +191,9 @@ function AdminOverview({
         />
         <MetricCard
           label="License mode"
-          value={state.license.readOnly ? 'Read-only' : 'Live'}
-          hint={state.license.key}
-          tone={state.license.readOnly ? 'pink' : 'emerald'}
+          value={license.readOnly ? 'Read-only' : 'Live'}
+          hint={license.key}
+          tone={license.readOnly ? 'pink' : 'emerald'}
         />
         <MetricCard
           label="Signal window"
@@ -195,7 +208,7 @@ function AdminOverview({
         {/* Node health grid */}
         <GlassCard title="Node fleet snapshot" description="Trạng thái tức thì của toàn bộ node trong fleet.">
           <div className="grid gap-3 sm:grid-cols-2">
-            {state.nodes.map((node) => {
+            {nodes.map((node) => {
               const bars = buildTelemetryBars(node.load, liveTick, scenario)
               return (
                 <div
@@ -247,44 +260,44 @@ function AdminOverview({
             <div
               className={cn(
                 'rounded-2xl border p-4',
-                state.license.readOnly
+                license.readOnly
                   ? 'border-amber-500/20 bg-amber-500/10'
                   : 'border-emerald-500/20 bg-emerald-500/10',
               )}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-white">{state.license.plan}</p>
-                  <p className="mt-1 font-mono text-xs text-slate-400">{state.license.key}</p>
+                  <p className="text-sm font-semibold text-white">{license.plan}</p>
+                  <p className="mt-1 font-mono text-xs text-slate-400">{license.key}</p>
                 </div>
                 <Badge
                   className={
-                    state.license.readOnly
+                    license.readOnly
                       ? 'bg-amber-500/20 text-amber-200'
                       : 'bg-emerald-500/20 text-emerald-200'
                   }
                 >
-                  {state.license.readOnly ? 'Read-only' : 'Active'}
+                  {license.readOnly ? 'Read-only' : 'Active'}
                 </Badge>
               </div>
               <div className="mt-4 grid grid-cols-3 gap-3 text-xs text-slate-400">
-                <StatValue label="Seats" value={String(state.license.seats)} />
-                <StatValue label="Version" value={state.license.version} />
-                <StatValue label="Expires" value={state.license.expiresAt.slice(0, 7)} />
+                <StatValue label="Seats" value={String(license.seats)} />
+                <StatValue label="Version" value={license.version} />
+                <StatValue label="Expires" value={license.expiresAt.slice(0, 7)} />
               </div>
             </div>
             <Button
               className="w-full bg-slate-900 text-white hover:bg-slate-800"
               onClick={onToggleLicense}
             >
-              {state.license.readOnly ? 'Restore to Live' : 'Simulate Expiry'}
+              {license.readOnly ? 'Restore to Live' : 'Simulate Expiry'}
             </Button>
           </GlassCard>
 
           {/* Alert feed */}
           <GlassCard title="Recent alerts" description="Tín hiệu quan trọng nhất cần xử lý.">
             <div className="space-y-2">
-              {state.alerts.slice(0, 4).map((alert) => (
+              {alerts.slice(0, 4).map((alert) => (
                 <div
                   key={alert.id}
                   className={cn(
@@ -318,7 +331,8 @@ function AdminOverview({
 }
 
 function AdminFleet({
-  state,
+  nodes,
+  regions,
   selectedNode,
   selectedRegion,
   liveTick,
@@ -327,7 +341,8 @@ function AdminFleet({
   onNodePatch,
   onOpenNodeModal,
 }: {
-  state: DemoState
+  nodes: Node[]
+  regions: Region[]
   selectedNode: Node
   selectedRegion: Region
   liveTick: number
@@ -342,7 +357,7 @@ function AdminFleet({
         {/* Fleet header */}
         <div className="flex items-center justify-between">
           <p className="text-sm text-slate-400">
-            {state.nodes.length} nodes · {state.nodes.filter((n) => n.status === 'online').length} online
+            {nodes.length} nodes · {nodes.filter((n) => n.status === 'online').length} online
           </p>
           <Button
             variant="outline"
@@ -355,11 +370,11 @@ function AdminFleet({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {state.nodes.map((node) => (
+          {nodes.map((node) => (
             <NodeCard
               key={node.id}
               node={node}
-              region={state.regions.find((r) => r.id === node.regionId)}
+              region={regions.find((r) => r.id === node.regionId)}
               selected={selectedNode.id === node.id}
               liveTick={liveTick}
               scenario={scenario}
@@ -562,10 +577,12 @@ function NodeCard({
 }
 
 function AdminLicense({
-  state,
+  alerts,
+  license,
   onToggleLicense,
 }: {
-  state: DemoState
+  alerts: Alert[]
+  license: License
   onToggleLicense: () => void
 }) {
   return (
@@ -579,31 +596,31 @@ function AdminLicense({
           <div
             className={cn(
               'rounded-2xl border p-5',
-              state.license.readOnly
+              license.readOnly
                 ? 'border-amber-500/20 bg-amber-500/10'
                 : 'border-emerald-500/20 bg-emerald-500/10',
             )}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-base font-semibold text-white">{state.license.plan}</p>
-                <p className="mt-1.5 font-mono text-sm text-slate-300">{state.license.key}</p>
+                <p className="text-base font-semibold text-white">{license.plan}</p>
+                <p className="mt-1.5 font-mono text-sm text-slate-300">{license.key}</p>
               </div>
               <Badge
                 className={
-                  state.license.readOnly
+                  license.readOnly
                     ? 'bg-amber-500/20 text-amber-200'
                     : 'bg-emerald-500/20 text-emerald-200'
                 }
               >
-                {state.license.readOnly ? 'Read-only' : 'Active'}
+                {license.readOnly ? 'Read-only' : 'Active'}
               </Badge>
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <InfoTile label="Hardware lock (HWID)" value={state.license.hwid} mono />
-              <InfoTile label="Version" value={state.license.version} />
-              <InfoTile label="Seats" value={String(state.license.seats)} />
-              <InfoTile label="Expires" value={state.license.expiresAt} />
+              <InfoTile label="Hardware lock (HWID)" value={license.hwid} mono />
+              <InfoTile label="Version" value={license.version} />
+              <InfoTile label="Seats" value={String(license.seats)} />
+              <InfoTile label="Expires" value={license.expiresAt} />
             </div>
           </div>
 
@@ -624,7 +641,7 @@ function AdminLicense({
             onClick={onToggleLicense}
           >
             <Shield className="size-4" />
-            {state.license.readOnly ? 'Turn license back on' : 'Simulate expiry'}
+            {license.readOnly ? 'Turn license back on' : 'Simulate expiry'}
           </Button>
         </div>
       </GlassCard>
@@ -636,7 +653,7 @@ function AdminLicense({
           description="Các tín hiệu ảnh hưởng đến quyền điều khiển."
         >
           <div className="space-y-3">
-            {state.alerts.map((alert) => (
+            {alerts.map((alert) => (
               <div
                 key={alert.id}
                 className={cn(
@@ -689,12 +706,16 @@ function AdminLicense({
 }
 
 function AdminAnalytics({
-  state,
+  nodes,
+  instances,
+  alerts,
   liveTick,
   scenario,
   liveFeed,
 }: {
-  state: DemoState
+  nodes: Node[]
+  instances: Instance[]
+  alerts: Alert[]
   liveTick: number
   scenario: SimulationScenario
   liveFeed: LiveFeedItem[]
@@ -711,23 +732,23 @@ function AdminAnalytics({
     <div className="space-y-6">
       {/* Summary KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Total nodes" value={String(state.nodes.length)} hint="Fleet size" tone="blue" />
+        <MetricCard label="Total nodes" value={String(nodes.length)} hint="Fleet size" tone="blue" />
         <MetricCard
           label="Running instances"
-          value={String(state.instances.filter((i) => i.status === 'running').length)}
+          value={String(instances.filter((i) => i.status === 'running').length)}
           hint="Across all nodes"
           tone="emerald"
         />
         <MetricCard
           label="Monthly revenue"
-          value={`$${state.instances.reduce((s, i) => s + i.priceMonthly, 0)}`}
+          value={`$${instances.reduce((s, i) => s + i.priceMonthly, 0)}`}
           hint="Demo MRR snapshot"
           tone="purple"
           delta={scenario === 'revenue-push' ? '+12%' : '+4%'}
         />
         <MetricCard
           label="Alerts active"
-          value={String(state.alerts.filter((a) => !a.resolved).length)}
+          value={String(alerts.filter((a) => !a.resolved).length)}
           hint="Pending resolution"
           tone="pink"
         />
@@ -757,7 +778,7 @@ function AdminAnalytics({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {state.nodes.map((node) => {
+            {nodes.map((node) => {
               const bars = buildTelemetryBars(node.load, liveTick, scenario)
               const tone = node.status === 'degraded' ? 'pink' : node.status === 'maintenance' ? 'purple' : 'blue'
               return (
