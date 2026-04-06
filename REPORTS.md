@@ -107,3 +107,51 @@
 |      - [ ] Export Next.js tĩnh & đắp vào Go Backend     |
 |      - [ ] Trỏ form mua VPS gọi sang `/v1/servers`      |
 +---------------------------------------------------------+
+
++---------------------------------------------------------+
+|  SYSTEM UPDATE REPORT                                   |
++---------------------------------------------------------+
+|  > TARGET  : Source Control & GitHub Integration        |
+|  > DATE    : 2026-04-06 23:11                           |
+|  > VERSION : v0.3.0 -> v0.3.0                           |
+|  > STATUS  : SUCCESS                                    |
++---------------------------------------------------------+
+|  [+] ADDED                                              |
+|      - Cập nhật .gitignore chuẩn cho Node & Go        |
+|      - Khởi tạo git repo & commit đầu tiên              |
+|      - Đẩy lên GitHub repo (nexusplane) qua \gh\ CLI    |
+|  [*] MODIFIED                                           |
+|      - Git history initialized                          |
+|  [-] REMOVED                                            |
+|      -                                                  |
++---------------------------------------------------------+
+|  ~ IMPACT ANALYSIS                                      |
+|      - Perf: N/A                                        |
+|      - Sec : Code đã đẩy lên private repo an toàn       |
++---------------------------------------------------------+
+|  ! NEXT STEPS / NOTES                                   |
+|      - [ ] Có thể setup CI/CD pipeline nếu cần thiết.   |
++---------------------------------------------------------+
+
++---------------------------------------------------------+
+|  SYSTEM UPDATE REPORT                                   |
++---------------------------------------------------------+
+|  > TARGET  : GitHub Repository Visibility               |
+|  > DATE    : 2026-04-06 23:20                           |
+|  > VERSION : v0.3.0 -> v0.3.0                           |
+|  > STATUS  : SUCCESS                                    |
++---------------------------------------------------------+
+|  [+] ADDED                                              |
+|      -                                                  |
+|  [*] MODIFIED                                           |
+|      - Thay đổi quyền truy cập repo từ Private sang Public|
+|  [-] REMOVED                                            |
+|      -                                                  |
++---------------------------------------------------------+
+|  ~ IMPACT ANALYSIS                                      |
+|      - Perf: N/A                                        |
+|      - Sec : Code có thể truy cập public.               |
++---------------------------------------------------------+
+|  ! NEXT STEPS / NOTES                                   |
+|      - [ ]                                              |
++---------------------------------------------------------+
